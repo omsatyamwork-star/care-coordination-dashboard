@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Care Coordination Dashboard — Psychiatric Outpatient</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --surface2: #1e2333;
+    --border: rgba(255,255,255,0.07);
+    --border-em: rgba(255,255,255,0.14);
+    --text: #e8eaf0;
+    --muted: #7a7f94;
+    --red: #e05252;
+    --red-bg: rgba(224,82,82,0.10);
+    --red-border: rgba(224,82,82,0.28);
+    --amber: #e0943a;
+    --amber-bg: rgba(224,148,58,0.10);
+    --amber-border: rgba(224,148,58,0.28);
+    --blue: #4e8ef7;
+    --blue-bg: rgba(78,142,247,0.10);
+    --blue-border: rgba(78,142,247,0.28);
+    --green: #3ecf7e;
+    --green-bg: rgba(62,207,126,0.10);
+    --green-border: rgba(62,207,126,0.28);
+    --font: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+
+  /* Layout */
+  .layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+  .sidebar { background: var(--surface); border-right: 0.5px solid var(--border); padding: 20px 0; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .main { padding: 24px 28px; overflow-y: auto; }
+
+  /* Sidebar */
+  .sidebar-logo { padding: 0 18px 20px; border-bottom: 0.5px solid var(--border); margin-bottom: 16px; }
+  .sidebar-logo h1 { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .sidebar-logo p { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: var(--mono); }
+
+  .nav-section { padding: 0 12px; margin-bottom: 20px; }
+  .nav-label { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding: 0 6px; margin-bottom: 6px; }
+  .nav-item { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 7px; cursor: pointer; font-size: 12px; color: var(--muted); transition: all .15s; margin-bottom: 1px; }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: var(--blue-bg); color: var(--blue); border: 0.5px solid var(--blue-border); }
+  .nav-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  .sidebar-footer { margin-top: auto; padding: 16px 18px 0; border-top: 0.5px solid var(--border); }
+  .user-pill { display: flex; align-items: center; gap: 8px; }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--blue-bg); border: 1px solid var(--blue-border); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: var(--blue); flex-shrink: 0; }
+  .user-info p { font-size: 12px; font-weight: 500; }
+  .user-info span { font-size: 11px; color: var(--muted); }
+
+  /* Header */
+  .page-hdr { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
+  .page-hdr h2 { font-size: 18px; font-weight: 500; }
+  .page-hdr p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .hdr-actions { display: flex; gap: 8px; align-items: center; }
+  select, input[type="text"] {
+    font-family: var(--font);
+    font-size: 12px;
+    background: var(--surface);
+    border: 0.5px solid var(--border-em);
+    color: var(--text);
+    border-radius: 7px;
+    padding: 6px 10px;
+    outline: none;
+    cursor: pointer;
+  }
+  select:hover, input[type="text"]:hover { border-color: rgba(255,255,255,.25); }
+
+  /* Metric strip */
+  .metric-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+  .metric-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 10px; padding: 14px 16px; cursor: pointer; transition: border-color .15s; }
+  .metric-card:hover { border-color: var(--border-em); }
+  .metric-card.active-filter { border-color: var(--blue); }
+  .metric-num { font-size: 26px; font-weight: 500; font-family: var(--mono); line-height: 1; }
+  .metric-lbl { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .metric-sub { font-size: 10px; margin-top: 2px; }
+
+  /* Load bar */
+  .load-bar-row { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 0.5px solid var(--border); border-radius: 10px; padding: 10px 16px; margin-bottom: 20px; }
+  .load-label { font-size: 11px; color: var(--muted); min-width: 110px; }
+  .bar-track { flex: 1; height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width .5s; }
+  .load-val { font-size: 12px; font-family: var(--mono); font-weight: 500; min-width: 40px; text-align: right; }
+  .load-pill { font-size: 10px; font-weight: 600; letter-spacing: .05em; padding: 2px 8px; border-radius: 20px; }
+
+  /* Section */
+  .section-hdr { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; margin-top: 4px; }
+  .section-hdr h3 { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+  .section-count { font-size: 10px; font-family: var(--mono); padding: 1px 6px; border-radius: 20px; font-weight: 500; }
+  .divider { border: none; border-top: 0.5px solid var(--border); margin: 18px 0; }
+
+  /* Critical cards */
+  .crit-card { background: var(--red-bg); border: 0.5px solid var(--red-border); border-radius: 10px; padding: 12px 14px; margin-bottom: 6px; display: flex; gap: 12px; align-items: flex-start; animation: slideIn .25s ease; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  .crit-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex-shrink: 0; margin-top: 5px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(224,82,82,.4)} 50%{box-shadow:0 0 0 5px rgba(224,82,82,0)} }
+  .crit-body { flex: 1; }
+  .crit-name { font-size: 13px; font-weight: 500; color: var(--red); display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+  .crit-reason { font-size: 12px; color: rgba(224,82,82,.8); margin-bottom: 7px; line-height: 1.5; }
+  .tags { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
+  .tag { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 20px; }
+  .tag-r { background: var(--red-bg); color: var(--red); border: 0.5px solid var(--red-border); }
+  .tag-a { background: var(--amber-bg); color: var(--amber); border: 0.5px solid var(--amber-border); }
+  .tag-b { background: var(--blue-bg); color: var(--blue); border: 0.5px solid var(--blue-border); }
+  .tag-g { background: var(--green-bg); color: var(--green); border: 0.5px solid var(--green-border); }
+  .tag-sim { background: rgba(78,142,247,.15); color: var(--blue); border: 0.5px solid var(--blue-border); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; }
+  .action-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .btn { font-family: var(--font); font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 6px; cursor: pointer; border: 0.5px solid var(--border-em); background: transparent; color: var(--muted); transition: all .15s; }
+  .btn:hover { background: var(--surface2); color: var(--text); }
+  .btn.danger { background: var(--red); color: #fff; border-color: var(--red); }
+  .btn.danger:hover { opacity: .85; }
+  .btn.amber { background: var(--amber); color: #fff; border-color: var(--amber); }
+  .btn.amber:hover { opacity: .85; }
+
+  /* Queue rows */
+  .queue-table { width: 100%; border-collapse: collapse; }
+  .queue-table thead th { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 0 10px 8px; text-align: left; }
+  .queue-row { border-top: 0.5px solid var(--border); cursor: pointer; transition: background .12s; }
+  .queue-row:hover { background: var(--surface); }
+  .queue-row td { padding: 9px 10px; font-size: 12px; vertical-align: middle; }
+  .queue-row td:first-child { font-weight: 500; }
+
+  /* Monitoring */
+  .mon-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; margin-bottom: 3px; border: 0.5px solid var(--border); background: var(--surface); transition: border-color .15s; cursor: pointer; }
+  .mon-row:hover { border-color: var(--border-em); }
+  .mon-name { font-weight: 500; font-size: 12px; min-width: 100px; }
+  .mon-detail { font-size: 12px; color: var(--muted); flex: 1; }
+  .attend-bar { display: flex; align-items: center; gap: 6px; }
+  .attend-track { width: 60px; height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+  .attend-fill { height: 100%; border-radius: 2px; }
+  .attend-pct { font-size: 11px; font-family: var(--mono); min-width: 30px; }
+
+  /* Stable grid */
+  .stable-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .stable-chip { font-size: 12px; padding: 6px 10px; border-radius: 7px; border: 0.5px solid var(--border); background: var(--surface); color: var(--muted); display: flex; align-items: center; justify-content: space-between; }
+  .stable-check { color: var(--green); font-size: 11px; }
+
+  /* Alert banner */
+  .alert-banner { background: var(--amber-bg); border: 0.5px solid var(--amber-border); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; font-size: 12px; color: var(--amber); display: flex; align-items: center; gap: 8px; }
+
+  /* Modal overlay */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: var(--surface); border: 0.5px solid var(--border-em); border-radius: 14px; padding: 22px 24px; max-width: 460px; width: 90%; }
+  .modal h3 { font-size: 14px; font-weight: 500; margin-bottom: 12px; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+  textarea { font-family: var(--font); font-size: 12px; background: var(--surface2); border: 0.5px solid var(--border-em); color: var(--text); border-radius: 7px; padding: 8px 10px; width: 100%; resize: vertical; outline: none; min-height: 80px; }
+  .modal-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+
+  /* Tooltip */
+  .tooltip { position: relative; }
+  .tooltip:hover .tip { display: block; }
+  .tip { display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: var(--surface2); border: 0.5px solid var(--border-em); border-radius: 6px; padding: 5px 8px; font-size: 11px; white-space: nowrap; z-index: 10; pointer-events: none; }
+
+  /* Timeline */
+  .timeline { list-style: none; padding: 0; }
+  .timeline li { display: flex; gap: 10px; padding-bottom: 10px; font-size: 12px; position: relative; }
+  .timeline li::before { content: ''; width: 1px; background: var(--border-em); position: absolute; left: 5px; top: 12px; bottom: 0; }
+  .timeline li:last-child::before { display: none; }
+  .tl-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; margin-top: 2px; border: 2px solid var(--bg); }
+  .tl-text { color: var(--muted); }
+  .tl-date { font-family: var(--mono); font-size: 10px; color: var(--muted); min-width: 60px; padding-top: 2px; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 20px; right: 20px; background: var(--surface2); border: 0.5px solid var(--green-border); border-radius: 9px; padding: 10px 14px; font-size: 12px; color: var(--green); z-index: 200; display: none; animation: fadeUp .2s ease; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 4px; }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .metric-strip { grid-template-columns: repeat(2, 1fr); }
+    .stable-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <h1>PsychCare</h1>
+      <p>Coordination System v1.0</p>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Views</div>
+      <div class="nav-item active">
+        <div class="nav-dot" style="background:var(--blue)"></div>
+        My Patients
+      </div>
+      <div class="nav-item" onclick="showToast('All patients view — coming in v2')">
+        <div class="nav-dot" style="background:var(--muted)"></div>
+        All Patients
+      </div>
+      <div class="nav-item" onclick="showToast('Escalations view — coming in v2')">
+        <div class="nav-dot" style="background:var(--red)"></div>
+        Escalations
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Risk tiers</div>
+      <div class="nav-item" onclick="filterSection('critical')" style="cursor:pointer">
+        <div class="nav-dot" style="background:var(--red)"></div>
+        Critical &nbsp;<span style="margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--red)">3</span>
+      </div>
+      <div class="nav-item" onclick="filterSection('queue')">
+        <div class="nav-dot" style="background:var(--amber)"></div>
+        Action queue &nbsp;<span style="margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--amber)">7</span>
+      </div>
+      <div class="nav-item" onclick="filterSection('monitoring')">
+        <div class="nav-dot" style="background:var(--blue)"></div>
+        Monitoring &nbsp;<span style="margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--blue)">11</span>
+      </div>
+      <div class="nav-item" onclick="filterSection('stable')">
+        <div class="nav-dot" style="background:var(--green)"></div>
+        Stable &nbsp;<span style="margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--green)">13</span>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Quick actions</div>
+      <div class="nav-item" onclick="openAddPatient()">+ Add patient</div>
+      <div class="nav-item" onclick="showToast('Export coming in v2')">Export report</div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-pill">
+        <div class="avatar">SM</div>
+        <div class="user-info">
+          <p>Dr. S. Mehra</p>
+          <span>Case Manager</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <div class="page-hdr">
+      <div>
+        <h2>Dashboard</h2>
+        <p id="datestamp"></p>
+      </div>
+      <div class="hdr-actions">
+        <input type="text" placeholder="Search patient..." oninput="filterSearch(this.value)" style="width:160px">
+        <select onchange="filterDate(this.value)">
+          <option>Last 30 days</option>
+          <option>Last 7 days</option>
+          <option>Today</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Metrics -->
+    <div class="metric-strip">
+      <div class="metric-card" onclick="filterSection('critical')" title="Click to jump to critical patients">
+        <div class="metric-num" style="color:var(--red)">3</div>
+        <div class="metric-lbl">Critical — act now</div>
+        <div class="metric-sub" style="color:var(--red)">↑ 1 from yesterday</div>
+      </div>
+      <div class="metric-card" onclick="filterSection('queue')">
+        <div class="metric-num" style="color:var(--amber)">7</div>
+        <div class="metric-lbl">In action queue</div>
+        <div class="metric-sub" style="color:var(--muted)">4 overdue &gt;24 hrs</div>
+      </div>
+      <div class="metric-card" onclick="filterSection('monitoring')">
+        <div class="metric-num" style="color:var(--blue)">11</div>
+        <div class="metric-lbl">Monitoring</div>
+        <div class="metric-sub" style="color:var(--muted)">2 attendance &lt;70%</div>
+      </div>
+      <div class="metric-card" onclick="filterSection('stable')">
+        <div class="metric-num" style="color:var(--green)">13</div>
+        <div class="metric-lbl">Stable</div>
+        <div class="metric-sub" style="color:var(--green)">All contacted &lt;2d</div>
+      </div>
+    </div>
+
+    <!-- Load bar -->
+    <div class="load-bar-row">
+      <span class="load-label">Caseload pressure</span>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:85%;background:var(--red)"></div>
+      </div>
+      <span class="load-val" style="color:var(--red)">34/40</span>
+      <span class="load-pill" style="background:var(--red-bg);color:var(--red);border:0.5px solid var(--red-border)">High</span>
+      <span style="font-size:11px;color:var(--muted);margin-left:8px">Consider flagging for supervisor review</span>
+    </div>
+
+    <!-- CRITICAL SECTION -->
+    <div id="section-critical">
+      <div class="section-hdr">
+        <h3 style="color:var(--red)">Critical — immediate action required</h3>
+        <span class="section-count" style="background:var(--red-bg);color:var(--red);border:0.5px solid var(--red-border)">3 patients</span>
+      </div>
+
+      <div class="alert-banner" style="background:var(--red-bg);border-color:var(--red-border);color:var(--red)">
+        ⚠ All 3 patients below have breached the 2-day post-discharge contact guideline. Immediate action required.
+      </div>
+
+      <!-- Patient: R. Patel (simulated) -->
+      <div class="crit-card" style="border-width:1px;border-color:rgba(224,82,82,.5)">
+        <div class="crit-pulse"></div>
+        <div class="crit-body">
+          <div class="crit-name">
+            R. Patel
+            <span class="tag tag-sim">Simulated scenario</span>
+          </div>
+          <div class="crit-reason">
+            Discharged 4 days ago — no contact logged &nbsp;·&nbsp; Missed appointment yesterday &nbsp;·&nbsp; No follow-up action recorded in 28 hrs
+          </div>
+          <div class="tags">
+            <span class="tag tag-r">4 days no contact</span>
+            <span class="tag tag-r">Missed appt.</span>
+            <span class="tag tag-r">No follow-up &gt;24 hrs</span>
+            <span class="tag tag-r">Escalation breach</span>
+          </div>
+          <!-- Timeline -->
+          <ul class="timeline" style="margin-bottom:8px">
+            <li>
+              <div class="tl-dot" style="background:var(--red)"></div>
+              <div class="tl-date">Day –4</div>
+              <div class="tl-text">Discharged from outpatient ward. Contact due within 2 days.</div>
+            </li>
+            <li>
+              <div class="tl-dot" style="background:var(--amber)"></div>
+              <div class="tl-date">Day –2</div>
+              <div class="tl-text" style="color:var(--red)">⚑ No contact logged — flagged as delayed</div>
+            </li>
+            <li>
+              <div class="tl-dot" style="background:var(--red)"></div>
+              <div class="tl-date">Yesterday</div>
+              <div class="tl-text" style="color:var(--red)">Missed scheduled appointment. No follow-up logged.</div>
+            </li>
+            <li>
+              <div class="tl-dot" style="background:var(--red)"></div>
+              <div class="tl-date">Today</div>
+              <div class="tl-text" style="color:var(--red)">⚑ High-risk — no contact in 4 days + missed appt. ESCALATE</div>
+            </li>
+          </ul>
+          <div class="action-row">
+            <button class="btn danger" onclick="openLog('R. Patel','call')">📞 Call now</button>
+            <button class="btn amber" onclick="openLog('R. Patel','visit')">🏠 Schedule visit</button>
+            <button class="btn" onclick="openLog('R. Patel','family')">Notify family / clinic</button>
+            <button class="btn" onclick="openLog('R. Patel','note')">Log note</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Patient: K. Sharma -->
+      <div class="crit-card">
+        <div class="crit-pulse"></div>
+        <div class="crit-body">
+          <div class="crit-name">K. Sharma</div>
+          <div class="crit-reason">Discharged 6 days ago — voicemail only, no confirmed contact &nbsp;·&nbsp; 2 consecutive missed appointments</div>
+          <div class="tags">
+            <span class="tag tag-r">6 days — high risk</span>
+            <span class="tag tag-r">2× consecutive miss</span>
+            <span class="tag tag-r">Contact unconfirmed</span>
+          </div>
+          <div class="action-row">
+            <button class="btn danger" onclick="openLog('K. Sharma','call')">📞 Call now</button>
+            <button class="btn" onclick="openLog('K. Sharma','escalate')">Escalate to supervisor</button>
+            <button class="btn" onclick="openLog('K. Sharma','note')">Log note</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Patient: M. Ali -->
+      <div class="crit-card">
+        <div class="crit-pulse"></div>
+        <div class="crit-body">
+          <div class="crit-name">M. Ali</div>
+          <div class="crit-reason">Pending status for 8 days — no resolution &nbsp;·&nbsp; Escalation flag raised 5 days ago with no logged action</div>
+          <div class="tags">
+            <span class="tag tag-r">Pending 8 days</span>
+            <span class="tag tag-r">Escalation idle &gt;5d</span>
+          </div>
+          <div class="action-row">
+            <button class="btn danger" onclick="openLog('M. Ali','resolve')">Resolve pending</button>
+            <button class="btn" onclick="openLog('M. Ali','appt')">Book appointment</button>
+            <button class="btn" onclick="openLog('M. Ali','note')">Log note</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider" id="div-queue"></div>
+
+    <!-- ACTION QUEUE -->
+    <div id="section-queue">
+      <div class="section-hdr">
+        <h3 style="color:var(--amber)">Action queue — follow-up needed today</h3>
+        <span class="section-count" style="background:var(--amber-bg);color:var(--amber);border:0.5px solid var(--amber-border)">7 patients</span>
+      </div>
+
+      <table class="queue-table">
+        <thead>
+          <tr>
+            <th>Patient</th>
+            <th>Alert</th>
+            <th>Reason</th>
+            <th>Next action</th>
+          </tr>
+        </thead>
+        <tbody id="queue-body">
+          <tr class="queue-row" onclick="openLog('D. Verma','follow-up')">
+            <td>D. Verma</td>
+            <td><span class="tag tag-a">Missed appt. 30 hrs ago</span></td>
+            <td style="color:var(--muted)">No follow-up logged after missed appointment</td>
+            <td><button class="btn" onclick="event.stopPropagation();openLog('D. Verma','follow-up')">Log follow-up</button></td>
+          </tr>
+          <tr class="queue-row" onclick="openLog('S. Gupta','contact')">
+            <td>S. Gupta</td>
+            <td><span class="tag tag-a">Pending 4 days</span></td>
+            <td style="color:var(--muted)">Flagged pending after failed contact — no resolution</td>
+            <td><button class="btn" onclick="event.stopPropagation();openLog('S. Gupta','contact')">Retry contact</button></td>
+          </tr>
+          <tr class="queue-row" onclick="openLog('P. Kaur','appt')">
+            <td>P. Kaur</td>
+            <td><span class="tag tag-a">Appt. not confirmed</span></td>
+            <td style="color:var(--muted)">Contacted day 1, no next appointment booked</td>
+            <td><button class="btn" onclick="event.stopPropagation();openLog('P. Kaur','appt')">Book appointment</button></td>
+          </tr>
+          <tr class="queue-row" onclick="openLog('A. Khan','review')">
+            <td>A. Khan</td>
+            <td><span class="tag tag-a">2nd reschedule</span></td>
+            <td style="color:var(--muted)">Soft disengagement signal — 2 reschedules post-discharge</td>
+            <td><button class="btn" onclick="event.stopPropagation();openLog('A. Khan','review')">Review risk</button></td>
+          </tr>
+          <tr class="queue-row" onclick="openLog('N. Bose','status')">
+            <td>N. Bose</td>
+            <td><span class="tag tag-a">Status check due</span></td>
+            <td style="color:var(--muted)">Last status logged 6 days ago — update required</td>
+            <td><button class="btn" onclick="event.stopPropagation();openLog('N. Bose','status')">Log status</button></td>
+          </tr>
+          <tr class="queue-row" onclick="openLog('V. Tiwari','contact')">
+            <td>V. Tiwari</td>
+            <td><span class="tag tag-a">Contact day 2 — today</span></td>
+            <td style="color:var(--muted)">Discharged 2 days ago — contact due today per guideline</td>
+            <td><button class="btn" onclick="event.stopPropagation();openLog('V. Tiwari','call')">📞 Call today</button></td>
+          </tr>
+          <tr class="queue-row" onclick="openLog('L. Das','med')">
+            <td>L. Das</td>
+            <td><span class="tag tag-a">Med check overdue</span></td>
+            <td style="color:var(--muted)">Medication review due — not logged since discharge</td>
+            <td><button class="btn" onclick="event.stopPropagation();openLog('L. Das','med')">Log med check</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="divider" id="div-monitoring"></div>
+
+    <!-- MONITORING -->
+    <div id="section-monitoring">
+      <div class="section-hdr">
+        <h3 style="color:var(--blue)">Monitoring — contacted, watching</h3>
+        <span class="section-count" style="background:var(--blue-bg);color:var(--blue);border:0.5px solid var(--blue-border)">11 patients</span>
+      </div>
+
+      <div id="mon-list">
+        <div class="mon-row" onclick="openLog('T. Singh','status')">
+          <span class="tag tag-b" style="min-width:90px;text-align:center">Contacted day 1</span>
+          <div class="mon-name">T. Singh</div>
+          <div class="mon-detail">Status check due &nbsp;·&nbsp; Next appt: 3 May (confirmed)</div>
+          <div class="attend-bar">
+            <div class="attend-track"><div class="attend-fill" style="width:78%;background:var(--blue)"></div></div>
+            <span class="attend-pct" style="color:var(--blue)">78%</span>
+          </div>
+        </div>
+        <div class="mon-row" onclick="openLog('R. Nair','status')">
+          <span class="tag tag-a" style="min-width:90px;text-align:center">Contacted day 2</span>
+          <div class="mon-name">R. Nair</div>
+          <div class="mon-detail">Attend rate borderline 62% &nbsp;·&nbsp; Med check due</div>
+          <div class="attend-bar">
+            <div class="attend-track"><div class="attend-fill" style="width:62%;background:var(--amber)"></div></div>
+            <span class="attend-pct" style="color:var(--amber)">62%</span>
+          </div>
+        </div>
+        <div class="mon-row" onclick="openLog('F. Ansari','status')">
+          <span class="tag tag-g" style="min-width:90px;text-align:center">Stable</span>
+          <div class="mon-name">F. Ansari</div>
+          <div class="mon-detail">Contacted day 1 &nbsp;·&nbsp; Appt. confirmed &nbsp;·&nbsp; Priority normal</div>
+          <div class="attend-bar">
+            <div class="attend-track"><div class="attend-fill" style="width:91%;background:var(--green)"></div></div>
+            <span class="attend-pct" style="color:var(--green)">91%</span>
+          </div>
+        </div>
+        <div class="mon-row" onclick="openLog('H. Mehta','status')">
+          <span class="tag tag-b" style="min-width:90px;text-align:center">Contacted day 1</span>
+          <div class="mon-name">H. Mehta</div>
+          <div class="mon-detail">Next appt: 6 May &nbsp;·&nbsp; No concerns flagged</div>
+          <div class="attend-bar">
+            <div class="attend-track"><div class="attend-fill" style="width:84%;background:var(--blue)"></div></div>
+            <span class="attend-pct" style="color:var(--blue)">84%</span>
+          </div>
+        </div>
+        <div class="mon-row" onclick="openLog('S. Yadav','status')">
+          <span class="tag tag-a" style="min-width:90px;text-align:center">Attend risk</span>
+          <div class="mon-name">S. Yadav</div>
+          <div class="mon-detail">Rolling attendance 66% — watch &nbsp;·&nbsp; 1 reschedule</div>
+          <div class="attend-bar">
+            <div class="attend-track"><div class="attend-fill" style="width:66%;background:var(--amber)"></div></div>
+            <span class="attend-pct" style="color:var(--amber)">66%</span>
+          </div>
+        </div>
+        <div id="mon-more" style="display:none">
+          <div class="mon-row"><span class="tag tag-b" style="min-width:90px;text-align:center">Contacted day 2</span><div class="mon-name">B. Kumar</div><div class="mon-detail">Stable &nbsp;·&nbsp; Next appt confirmed</div><div class="attend-bar"><div class="attend-track"><div class="attend-fill" style="width:80%;background:var(--blue)"></div></div><span class="attend-pct" style="color:var(--blue)">80%</span></div></div>
+          <div class="mon-row"><span class="tag tag-g" style="min-width:90px;text-align:center">Stable</span><div class="mon-name">C. Pillai</div><div class="mon-detail">All checks clear &nbsp;·&nbsp; Low risk</div><div class="attend-bar"><div class="attend-track"><div class="attend-fill" style="width:88%;background:var(--green)"></div></div><span class="attend-pct" style="color:var(--green)">88%</span></div></div>
+          <div class="mon-row"><span class="tag tag-b" style="min-width:90px;text-align:center">Contacted day 1</span><div class="mon-name">D. Iyer</div><div class="mon-detail">Appt. in 4 days &nbsp;·&nbsp; No flags</div><div class="attend-bar"><div class="attend-track"><div class="attend-fill" style="width:75%;background:var(--blue)"></div></div><span class="attend-pct" style="color:var(--blue)">75%</span></div></div>
+          <div class="mon-row"><span class="tag tag-a" style="min-width:90px;text-align:center">Watch</span><div class="mon-name">E. Rao</div><div class="mon-detail">Attendance dipped this month — monitor</div><div class="attend-bar"><div class="attend-track"><div class="attend-fill" style="width:69%;background:var(--amber)"></div></div><span class="attend-pct" style="color:var(--amber)">69%</span></div></div>
+          <div class="mon-row"><span class="tag tag-g" style="min-width:90px;text-align:center">Stable</span><div class="mon-name">G. Nair</div><div class="mon-detail">Regular attender &nbsp;·&nbsp; Stable status</div><div class="attend-bar"><div class="attend-track"><div class="attend-fill" style="width:93%;background:var(--green)"></div></div><span class="attend-pct" style="color:var(--green)">93%</span></div></div>
+        </div>
+        <button class="btn" id="mon-toggle" style="margin-top:6px;font-size:11px;color:var(--muted)" onclick="toggleMon()">+ Show 6 more</button>
+      </div>
+    </div>
+
+    <div class="divider" id="div-stable"></div>
+
+    <!-- STABLE -->
+    <div id="section-stable">
+      <div class="section-hdr">
+        <h3 style="color:var(--green)">Stable — no action needed</h3>
+        <span class="section-count" style="background:var(--green-bg);color:var(--green);border:0.5px solid var(--green-border)">13 patients</span>
+      </div>
+      <div class="stable-grid">
+        <div class="stable-chip">B. Mishra <span class="stable-check">✓</span></div>
+        <div class="stable-chip">C. Reddy <span class="stable-check">✓</span></div>
+        <div class="stable-chip">H. Joshi <span class="stable-check">✓</span></div>
+        <div class="stable-chip">I. Pillai <span class="stable-check">✓</span></div>
+        <div class="stable-chip">J. Rao <span class="stable-check">✓</span></div>
+        <div class="stable-chip">K. Menon <span class="stable-check">✓</span></div>
+        <div class="stable-chip">L. Sinha <span class="stable-check">✓</span></div>
+        <div class="stable-chip">M. Bhat <span class="stable-check">✓</span></div>
+        <div class="stable-chip">N. Chopra <span class="stable-check">✓</span></div>
+        <div class="stable-chip">O. Trivedi <span class="stable-check">✓</span></div>
+        <div class="stable-chip">P. Arora <span class="stable-check">✓</span></div>
+        <div class="stable-chip">Q. Malhotra <span class="stable-check">✓</span></div>
+        <div class="stable-chip">R. Saxena <span class="stable-check">✓</span></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Log Action Modal -->
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3 id="modal-title">Log action</h3>
+    <p id="modal-sub" style="font-size:12px;color:var(--muted);margin-bottom:14px"></p>
+    <div class="modal-label">Action type</div>
+    <select id="modal-type" style="width:100%;margin-bottom:10px">
+      <option>📞 Phone call — patient answered</option>
+      <option>📞 Phone call — no answer / voicemail</option>
+      <option>🏠 Home visit scheduled</option>
+      <option>📅 Appointment booked</option>
+      <option>👨‍👩‍👧 Family / community notified</option>
+      <option>🔺 Escalated to supervisor</option>
+      <option>📋 Status check logged</option>
+      <option>💊 Medication check done</option>
+      <option>📝 General note</option>
+    </select>
+    <div class="modal-label">Notes</div>
+    <textarea id="modal-notes" placeholder="Add notes about this action..."></textarea>
+    <div class="modal-label" style="margin-top:10px">Next review in</div>
+    <select id="modal-review" style="width:100%;margin-bottom:4px">
+      <option>24 hours</option>
+      <option>48 hours</option>
+      <option>3 days</option>
+      <option>7 days</option>
+      <option>Next appointment</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn" onclick="document.getElementById('modal').classList.remove('show')">Cancel</button>
+      <button class="btn danger" onclick="submitLog()">Save action</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Date
+  const now = new Date();
+  document.getElementById('datestamp').textContent =
+    now.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+  function openLog(name, type) {
+    const labels = {
+      call:'📞 Log phone call', visit:'🏠 Schedule home visit',
+      family:'👨‍👩‍👧 Notify family / clinic', note:'📝 Add note',
+      escalate:'🔺 Escalate', resolve:'✅ Resolve pending status',
+      appt:'📅 Book appointment', follow:'up Log follow-up',
+      review:'Review risk level', status:'📋 Log status check',
+      med:'💊 Medication check', contact:'📞 Retry contact',
+      'follow-up':'📋 Log follow-up action'
+    };
+    document.getElementById('modal-title').textContent = labels[type] || 'Log action';
+    document.getElementById('modal-sub').textContent = 'Patient: ' + name;
+    document.getElementById('modal-notes').value = '';
+    document.getElementById('modal').classList.add('show');
+  }
+
+  function closeModal(e) {
+    if (e.target === document.getElementById('modal'))
+      document.getElementById('modal').classList.remove('show');
+  }
+
+  function submitLog() {
+    document.getElementById('modal').classList.remove('show');
+    showToast('Action logged successfully');
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = '✓ ' + msg;
+    t.style.display = 'block';
+    setTimeout(() => t.style.display = 'none', 2800);
+  }
+
+  function filterSection(id) {
+    document.getElementById('section-' + id).scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+
+  function toggleMon() {
+    const more = document.getElementById('mon-more');
+    const btn = document.getElementById('mon-toggle');
+    if (more.style.display === 'none') {
+      more.style.display = 'block';
+      btn.textContent = '− Show fewer';
+    } else {
+      more.style.display = 'none';
+      btn.textContent = '+ Show 6 more';
+    }
+  }
+
+  function filterSearch(val) {
+    const v = val.toLowerCase();
+    document.querySelectorAll('.queue-row').forEach(r => {
+      r.style.display = r.textContent.toLowerCase().includes(v) ? '' : 'none';
+    });
+    document.querySelectorAll('.mon-row').forEach(r => {
+      r.style.display = r.textContent.toLowerCase().includes(v) ? '' : 'none';
+    });
+    document.querySelectorAll('.stable-chip').forEach(r => {
+      r.style.display = r.textContent.toLowerCase().includes(v) ? '' : 'none';
+    });
+  }
+
+  function filterDate(val) {
+    showToast('Filtered to: ' + val);
+  }
+
+  function openAddPatient() {
+    document.getElementById('modal-title').textContent = 'Add new patient';
+    document.getElementById('modal-sub').textContent = 'Enter discharge and contact details';
+    document.getElementById('modal').classList.add('show');
+  }
+</script>
+
+</body>
+</html>
